@@ -1,0 +1,46 @@
+name: Build PlotSquared (collect jars)
+
+# 触发条件：push 或 PR 到 main / develop
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1. 拉取源码
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # 2. 安装 JDK 21
+      - name: Set up JDK
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+
+      # 3. 给 gradlew 加执行权限
+      - name: Grant execute permission for gradlew
+        run: chmod +x gradlew
+
+      # 4. 清理并构建（含 shadowJar）
+      - name: Build with Gradle
+        run: ./gradlew clean shadowJar --no-daemon --stacktrace
+
+      # 5. 只收集所有 *.jar 并打包
+      - name: Collect jars
+        run: |
+          mkdir jars
+          find . -type f -name "*.jar" ! -path "./jars/*" -exec cp {} jars/ \;
+          zip -r plotsquared-jars.zip jars/
+
+      # 6. 上传
+      - name: Upload jars
+        uses: actions/upload-artifact@v4
+        with:
+          name: plotsquared-jars
+          path: plotsquared-jars.zip
